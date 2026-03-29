@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="taskz">
+<meta name="theme-color" content="#000000">
+<title>taskz</title>
+<script>
+const manifestData = {
+  name: "taskz",
+  short_name: "taskz",
+  description: "Lembrete inteligente de tarefas recorrentes",
+  start_url: ".",
+  display: "standalone",
+  background_color: "#000000",
+  theme_color: "#000000",
+  orientation: "portrait",
+  icons: [
+    { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%230A84FF'/%3E%3Ctext x='96' y='130' font-size='100' text-anchor='middle' fill='white' font-family='system-ui'%3E✓%3C/text%3E%3C/svg%3E", sizes: "192x192", type: "image/svg+xml" },
+    { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230A84FF'/%3E%3Ctext x='256' y='350' font-size='280' text-anchor='middle' fill='white' font-family='system-ui'%3E✓%3C/text%3E%3C/svg%3E", sizes: "512x512", type: "image/svg+xml" }
+  ]
+};
+const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+const manifestURL = URL.createObjectURL(blob);
+document.write('<link rel="manifest" href="' + manifestURL + '">');
+</script>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230A84FF'/%3E%3Ctext x='90' y='125' font-size='95' text-anchor='middle' fill='white' font-family='system-ui'%3E✓%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #000; --surface: #1C1C1E; --surface2: #2C2C2E;
+  --border: rgba(255,255,255,0.08); --text: #FFFFFF;
+  --text2: #EBEBF5; --text3: #8E8E93; --text4: #636366;
+  --blue: #0A84FF; --green: #30D158; --red: #FF453A; --orange: #FF9F0A;
+  --safe-top: env(safe-area-inset-top, 44px);
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  min-height: 100vh; min-height: 100dvh;
+  overflow: hidden; -webkit-font-smoothing: antialiased;
+}
+#app {
+  height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column; overflow: hidden;
+  padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+}
+.page { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.page.active { display: flex; }
+.app-header { padding: 16px 20px 10px; display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
+.app-name { font-size: 34px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
+.app-sub { font-size: 13px; color: var(--text3); margin-top: 3px; }
+.btn-add {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--blue); border: none; color: #fff;
+  font-size: 26px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 4px 16px rgba(10,132,255,0.45);
+  transition: transform 0.12s, opacity 0.12s; flex-shrink: 0;
+}
+.btn-add:active { transform: scale(0.91); opacity: 0.8; }
+.tab-row { display: flex; gap: 8px; padding: 0 16px 8px; flex-shrink: 0; }
+.tab-btn {
+  flex: 1; padding: 8px 0; border-radius: 10px; border: none;
+  background: var(--surface); color: var(--text3);
+  font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+}
+.tab-btn.active { background: var(--surface2); color: var(--text); }
+.task-list { flex: 1; overflow-y: auto; padding: 4px 16px 20px; }
+.task-list::-webkit-scrollbar { display: none; }
+.empty-state { text-align: center; color: var(--text4); font-size: 15px; margin-top: 60px; line-height: 1.7; }
+.empty-icon { font-size: 40px; display: block; margin-bottom: 10px; }
+.task-card {
+  background: var(--surface); border-radius: 16px; padding: 14px 12px;
+  margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px;
+  border: 1px solid var(--border); cursor: pointer; transition: opacity 0.12s;
+  -webkit-user-select: none;
+}
+.task-card:active { opacity: 0.75; }
+.checkbox {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--text4); background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; margin-top: 1px;
+  transition: background 0.15s, border-color 0.15s; font-size: 13px; color: transparent;
+}
+.checkbox.done { background: var(--green); border-color: var(--green); color: #fff; }
+.card-body { flex: 1; min-width: 0; }
+.card-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-title.done { text-decoration: line-through; color: var(--text4); }
+.card-meta { font-size: 12px; color: var(--text4); margin-bottom: 3px; }
+.card-due { font-size: 12px; color: var(--text3); }
+.badge-overdue { color: var(--red) !important; }
+.badge-today { color: var(--orange) !important; }
+.chevron { color: var(--text4); font-size: 22px; padding-top: 2px; }
+.nav-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 6px; flex-shrink: 0; }
+.nav-title { font-size: 17px; font-weight: 600; color: var(--text); }
+.nav-btn { background: none; border: none; color: var(--blue); font-size: 17px; cursor: pointer; font-family: inherit; padding: 4px 0; min-width: 60px; }
+.nav-btn.right { text-align: right; }
+.nav-btn.disabled { color: var(--text4); pointer-events: none; }
+.detail-scroll { flex: 1; overflow-y: auto; padding: 8px 20px 20px; }
+.detail-scroll::-webkit-scrollbar { display: none; }
+.detail-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+.detail-notes { font-size: 15px; color: var(--text3); margin-bottom: 16px; line-height: 1.55; }
+.detail-section { background: var(--surface); border-radius: 16px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 14px; }
+.detail-row { display: flex; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
+.detail-row:last-child { border-bottom: none; }
+.detail-icon { font-size: 18px; width: 24px; text-align: center; }
+.detail-row-inner { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.detail-label { color: var(--text3); font-size: 14px; flex-shrink: 0; }
+.detail-value { color: var(--text2); font-size: 14px; font-weight: 500; text-align: right; }
+.action-btn {
+  width: 100%; padding: 15px; border-radius: 14px; border: none;
+  color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
+  font-family: inherit; margin-bottom: 10px; transition: opacity 0.12s; letter-spacing: -0.3px;
+}
+.action-btn:active { opacity: 0.78; }
+.action-btn.green { background: var(--green); }
+.action-btn.grey { background: var(--surface2); }
+.action-btn.red { background: var(--red); }
+.hist-toggle { background: none; border: none; color: var(--blue); font-size: 14px; cursor: pointer; font-family: inherit; padding: 4px 0; margin-bottom: 8px; display: block; }
+.hist-list { background: var(--surface); border-radius: 12px; padding: 2px 14px; margin-bottom: 14px; border: 1px solid var(--border); }
+.hist-item { font-size: 13px; color: var(--text2); padding: 9px 0; border-bottom: 1px solid var(--border); }
+.hist-item:last-child { border-bottom: none; }
+.hist-num { color: var(--text4); }
+.form-scroll { flex: 1; overflow-y: auto; padding: 4px 16px 20px; }
+.form-scroll::-webkit-scrollbar { display: none; }
+.section-label { font-size: 12px; color: var(--text4); text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 6px 6px; font-weight: 600; }
+.form-section { background: var(--surface); border-radius: 16px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--border); }
+.form-field { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-size: 17px; font-weight: 600; padding: 15px 16px; outline: none; font-family: inherit; display: block; }
+.form-field::placeholder { color: var(--text4); font-weight: 400; }
+.form-field.notes { font-size: 15px; font-weight: 400; resize: none; border-bottom: none; min-height: 60px; }
+.form-field.date { font-size: 15px; font-weight: 400; color-scheme: dark; border-bottom: none; }
+.opt-row { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text2); font-size: 15px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; text-align: left; font-family: inherit; }
+.opt-row:last-child { border-bottom: none; }
+.opt-row:active { background: var(--surface2); }
+.opt-check { color: var(--blue); font-size: 16px; }
+.custom-row { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.custom-label { color: var(--text3); font-size: 13px; white-space: nowrap; }
+.custom-num { width: 64px; background: var(--surface2); border: none; border-radius: 8px; color: var(--text); font-size: 16px; padding: 8px; text-align: center; outline: none; font-family: inherit; }
+.custom-select { flex: 1; background: var(--surface2); border: none; border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px 10px; outline: none; font-family: inherit; cursor: pointer; }
+.reminder-note { font-size: 12px; color: var(--text4); padding: 10px 16px 14px; line-height: 1.55; border-top: 1px solid var(--border); }
+.notif-banner { background: var(--surface2); border-radius: 14px; margin: 0 16px 12px; padding: 13px 16px; border: 1px solid rgba(10,132,255,0.3); flex-shrink: 0; }
+.notif-banner p { font-size: 13px; color: var(--text3); line-height: 1.5; margin-bottom: 10px; }
+.notif-banner button { background: var(--blue); border: none; color: #fff; border-radius: 10px; padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+#toast { position: fixed; bottom: calc(var(--safe-bottom) + 20px); left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(44,44,46,0.97); color: var(--text); padding: 12px 20px; border-radius: 14px; font-size: 14px; font-weight: 500; z-index: 999; white-space: nowrap; box-shadow: 0 8px 28px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; align-items: flex-end; justify-content: center; padding-bottom: calc(var(--safe-bottom) + 10px); }
+.overlay.open { display: flex; }
+.dialog { background: var(--surface2); border-radius: 16px; overflow: hidden; width: calc(100% - 32px); max-width: 360px; margin-bottom: 8px; }
+.dialog-title { font-size: 13px; font-weight: 600; text-align: center; padding: 14px 16px 4px; color: var(--text3); }
+.dialog-msg { font-size: 13px; text-align: center; color: var(--text3); padding: 0 16px 14px; line-height: 1.5; }
+.dialog-btns { border-top: 1px solid var(--border); display: flex; }
+.dialog-btn { flex: 1; padding: 14px; background: transparent; border: none; font-size: 17px; cursor: pointer; font-family: inherit; color: var(--blue); border-right: 1px solid var(--border); }
+.dialog-btn:last-child { border-right: none; }
+.dialog-btn.destructive { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="page active" id="page-list">
+    <div class="app-header">
+      <div>
+        <div class="app-name">taskz</div>
+        <div class="app-sub" id="pending-count">0 pendentes</div>
+      </div>
+      <button class="btn-add" onclick="openCreate()">+</button>
+    </div>
+    <div id="notif-banner" class="notif-banner" style="display:none">
+      <p>Ative as notificações para receber lembretes automáticos das suas tarefas.</p>
+      <button onclick="requestNotifPermission()">Ativar Notificações</button>
+    </div>
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-pending" onclick="setTab('pending')">Pendentes (<span id="cnt-pending">0</span>)</button>
+      <button class="tab-btn" id="tab-done" onclick="setTab('done')">Concluídas (<span id="cnt-done">0</span>)</button>
+    </div>
+    <div class="task-list" id="task-list"></div>
+  </div>
+  <div class="page" id="page-detail">
+    <div class="nav-bar">
+      <button class="nav-btn" onclick="showPage('list')">‹ Voltar</button>
+      <div class="nav-title"></div>
+      <button class="nav-btn right" onclick="openEditCurrent()">Editar</button>
+    </div>
+    <div class="detail-scroll" id="detail-content"></div>
+  </div>
+  <div class="page" id="page-form">
+    <div class="nav-bar">
+      <button class="nav-btn" id="form-cancel-btn" onclick="cancelForm()">Cancelar</button>
+      <div class="nav-title" id="form-title">Nova Tarefa</div>
+      <button class="nav-btn right disabled" id="form-save-btn" onclick="saveForm()">Salvar</button>
+    </div>
+    <div class="form-scroll">
+      <div class="form-section">
+        <input type="text" class="form-field" id="f-title" placeholder="Nome da tarefa" maxlength="80" oninput="validateForm()">
+        <textarea class="form-field notes" id="f-notes" placeholder="Notas (opcional)" rows="2"></textarea>
+      </div>
+      <div class="section-label">Data da próxima notificação</div>
+      <div class="form-section">
+        <input type="date" class="form-field date" id="f-date">
+      </div>
+      <div class="section-label">Repetição</div>
+      <div class="form-section" id="repeat-options">
+        <button class="opt-row" onclick="selectRepeat('weekly')"><span>Semanalmente</span><span class="opt-check" id="chk-weekly"></span></button>
+        <button class="opt-row" onclick="selectRepeat('monthly')"><span>Mensalmente</span><span class="opt-check" id="chk-monthly">✓</span></button>
+        <button class="opt-row" onclick="selectRepeat('yearly')"><span>Anualmente</span><span class="opt-check" id="chk-yearly"></span></button>
+        <button class="opt-row" onclick="selectRepeat('custom')"><span>Personalizado</span><span class="opt-check" id="chk-custom"></span></button>
+        <div class="custom-row" id="custom-row" style="display:none">
+          <span class="custom-label">A cada</span>
+          <input type="number" class="custom-num" id="f-custom-val" value="1" min="1" max="999">
+          <select class="custom-select" id="f-custom-unit">
+            <option value="dias">dias</option>
+            <option value="semanas">semanas</option>
+            <option value="meses" selected>meses</option>
+            <option value="anos">anos</option>
+          </select>
+        </div>
+      </div>
+      <div class="section-label">Lembrete para tarefas pendentes</div>
+      <div class="form-section">
+        <button class="opt-row" onclick="selectReminder('hourly')"><span>A cada hora</span><span class="opt-check" id="chk-hourly"></span></button>
+        <button class="opt-row" onclick="selectReminder('daily')"><span>Uma vez por dia</span><span class="opt-check" id="chk-daily">✓</span></button>
+        <div class="reminder-note">Você será notificado nessa frequência enquanto a tarefa estiver pendente e o prazo tiver chegado.</div>
+      </div>
+      <div style="height:20px"></div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<div class="overlay" id="confirm-overlay">
+  <div class="dialog">
+    <div class="dialog-title" id="confirm-title"></div>
+    <div class="dialog-msg" id="confirm-msg"></div>
+    <div class="dialog-btns">
+      <button class="dialog-btn" onclick="closeConfirm()">Cancelar</button>
+      <button class="dialog-btn destructive" id="confirm-ok-btn">Excluir</button>
+    </div>
+  </div>
+</div>
+<script>
+const STORAGE_KEY='taskz_v1';
+let tasks=[],currentTab='pending',currentTaskId=null,formMode='create',formRepeat='monthly',formReminder='daily',histVisible=false;
+function load(){try{tasks=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch{tasks=[];}}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(tasks));}catch{}}
+function fmtDate(s){if(!s)return'';const d=new Date(s+'T12:00:00');return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});}
+function today(){return new Date().toISOString().split('T')[0];}
+function isOverdue(s){if(!s)return false;return s<today();}
+function isDueToday(s){if(!s)return false;return s===today();}
+function addPeriod(dateStr,repeat){
+  const d=new Date(dateStr+'T12:00:00');
+  if(repeat.type==='weekly')d.setDate(d.getDate()+7);
+  else if(repeat.type==='monthly')d.setMonth(d.getMonth()+1);
+  else if(repeat.type==='yearly')d.setFullYear(d.getFullYear()+1);
+  else if(repeat.type==='custom'){
+    const v=parseInt(repeat.value)||1;
+    if(repeat.unit==='dias')d.setDate(d.getDate()+v);
+    else if(repeat.unit==='semanas')d.setDate(d.getDate()+v*7);
+    else if(repeat.unit==='meses')d.setMonth(d.getMonth()+v);
+    else if(repeat.unit==='anos')d.setFullYear(d.getFullYear()+v);
+  }
+  return d.toISOString().split('T')[0];
+}
+function repeatLabel(r){
+  if(!r)return'Sem repetição';
+  if(r.type==='weekly')return'Toda semana';
+  if(r.type==='monthly')return'Todo mês';
+  if(r.type==='yearly')return'Todo ano';
+  if(r.type==='custom')return`A cada ${r.value} ${r.unit}`;
+  return'';
+}
+function uid(){return Date.now()+Math.random().toString(36).slice(2);}
+let toastTimer;
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2400);}
+function showConfirm(title,msg,okLabel,cb){
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-msg').textContent=msg;
+  const btn=document.getElementById('confirm-ok-btn');
+  btn.textContent=okLabel;
+  btn.onclick=()=>{closeConfirm();cb();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function closeConfirm(){document.getElementById('confirm-overlay').classList.remove('open');}
+function showPage(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');}
+function checkNotifBanner(){const b=document.getElementById('notif-banner');if('Notification'in window&&Notification.permission==='default'){b.style.display='block';}else{b.style.display='none';}}
+function requestNotifPermission(){
+  if(!('Notification'in window)){showToast('Notificações não suportadas');return;}
+  Notification.requestPermission().then(p=>{
+    document.getElementById('notif-banner').style.display='none';
+    if(p==='granted'){showToast('Notificações ativadas ✓');scheduleAll();}
+    else{showToast('Permissão negada. Ative nas configurações do Safari.');}
+  });
+}
+function scheduleAll(){
+  if(!('Notification'in window)||Notification.permission!=='granted')return;
+  const now=new Date();
+  tasks.filter(t=>!t.completed).forEach(t=>{
+    const due=new Date(t.nextDue+'T09:00:00');
+    if(due>now)scheduleNotif(t,due);
+  });
+}
+function scheduleNotif(task,when){
+  const delay=when-Date.now();
+  if(delay<0||delay>7*24*60*60*1000)return;
+  setTimeout(()=>{
+    if(Notification.permission==='granted'){
+      try{new Notification('taskz',{body:`Lembrete: ${task.title}`,tag:'task-'+task.id});}catch(e){}
+    }
+  },delay);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function renderList(){
+  const pending=tasks.filter(t=>!t.completed);
+  const done=tasks.filter(t=>t.completed);
+  document.getElementById('pending-count').textContent=pending.length===1?'1 pendente':`${pending.length} pendentes`;
+  document.getElementById('cnt-pending').textContent=pending.length;
+  document.getElementById('cnt-done').textContent=done.length;
+  const list=currentTab==='pending'?[...pending]:[...done];
+  list.sort((a,b)=>{const ao=isOverdue(a.nextDue),bo=isOverdue(b.nextDue);if(ao&&!bo)return-1;if(!ao&&bo)return 1;return a.nextDue<b.nextDue?-1:1;});
+  const el=document.getElementById('task-list');
+  if(list.length===0){el.innerHTML=`<div class="empty-state"><span class="empty-icon">${currentTab==='pending'?'🎉':'📋'}</span>${currentTab==='pending'?'Nenhuma tarefa pendente!':'Nenhuma tarefa concluída ainda.'}</div>`;return;}
+  el.innerHTML=list.map(t=>{
+    const ov=isOverdue(t.nextDue),td=isDueToday(t.nextDue);
+    const dueClass=t.completed?'':(ov?'badge-overdue':(td?'badge-today':''));
+    const duePrefix=t.completed?'':(ov?'Atrasada · ':(td?'Hoje · ':''));
+    return`<div class="task-card" onclick="openDetail('${t.id}')">
+      <div class="checkbox ${t.completed?'done':''}" onclick="event.stopPropagation();toggleComplete('${t.id}')">${t.completed?'✓':''}</div>
+      <div class="card-body">
+        <div class="card-title ${t.completed?'done':''}">${esc(t.title)}</div>
+        <div class="card-meta">🔁 ${repeatLabel(t.repeat)} · 🔔 ${t.reminder==='hourly'?'Horário':'Diário'}</div>
+        <div class="card-due ${dueClass}">${duePrefix}${t.completed?'Próximo: ':'Vence: '}${fmtDate(t.nextDue)}</div>
+      </div>
+      <div class="chevron">›</div>
+    </div>`;
+  }).join('');
+}
+function setTab(tab){currentTab=tab;document.getElementById('tab-pending').classList.toggle('active',tab==='pending');document.getElementById('tab-done').classList.toggle('active',tab==='done');renderList();}
+function openDetail(id){currentTaskId=id;histVisible=false;renderDetail();showPage('detail');}
+function renderDetail(){
+  const t=tasks.find(x=>x.id===currentTaskId);if(!t)return;
+  const ov=isOverdue(t.nextDue),td=isDueToday(t.nextDue);
+  const dueColor=t.completed?'#8E8E93':(ov?'#FF453A':(td?'#FF9F0A':'#F2F2F7'));
+  const dueBadge=t.completed?'':(ov?' · Atrasada':(td?' · Hoje':''));
+  const hist=t.history||[];
+  document.getElementById('detail-content').innerHTML=`
+    <div class="detail-title">${esc(t.title)}</div>
+    ${t.notes?`<div class="detail-notes">${esc(t.notes)}</div>`:''}
+    <div class="detail-section">
+      <div class="detail-row"><span class="detail-icon">📅</span><div class="detail-row-inner"><span class="detail-label">Próximo aviso</span><span class="detail-value" style="color:${dueColor}">${fmtDate(t.nextDue)}${dueBadge}</span></div></div>
+      <div class="detail-row"><span class="detail-icon">🔁</span><div class="detail-row-inner"><span class="detail-label">Repetição</span><span class="detail-value">${repeatLabel(t.repeat)}</span></div></div>
+      <div class="detail-row"><span class="detail-icon">🔔</span><div class="detail-row-inner"><span class="detail-label">Lembrete pendente</span><span class="detail-value">${t.reminder==='hourly'?'A cada hora':'Uma vez por dia'}</span></div></div>
+      <div class="detail-row"><span class="detail-icon">✅</span><div class="detail-row-inner"><span class="detail-label">Status</span><span class="detail-value">${t.completed?'Concluída':'Pendente'}</span></div></div>
+    </div>
+    ${hist.length>0?`<button class="hist-toggle" onclick="toggleHist()">${histVisible?'▾':'▸'} Histórico (${hist.length})</button>${histVisible?`<div class="hist-list">${hist.map((h,i)=>`<div class="hist-item"><span class="hist-num">#${hist.length-i}</span> Concluída em ${fmtDate(h.completedAt?h.completedAt.split('T')[0]:'')}</div>`).join('')}</div>`:'`'}`:''}
+    <div style="margin-top:4px">
+      ${!t.completed?`<button class="action-btn green" onclick="completeTask('${t.id}')">✓ Marcar como Concluída</button>`:`<button class="action-btn grey" onclick="uncompleteTask('${t.id}')">↩ Desfazer Conclusão</button>`}
+      <button class="action-btn red" onclick="confirmDelete('${t.id}')">🗑 Excluir Tarefa</button>
+    </div>`;
+}
+function toggleHist(){histVisible=!histVisible;renderDetail();}
+function toggleComplete(id){const t=tasks.find(x=>x.id===id);if(!t)return;t.completed?uncompleteTask(id):completeTask(id);}
+function completeTask(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  const now=new Date(),nowStr=now.toISOString().split('T')[0];
+  const nextDue=addPeriod(nowStr,t.repeat);
+  t.history=[{completedAt:now.toISOString(),nextDue:t.nextDue},...(t.history||[])];
+  t.completed=true;t.completedAt=now.toISOString();t.nextDue=nextDue;
+  save();scheduleAll();
+  showToast('Concluída! Próximo: '+fmtDate(nextDue));
+  if(currentTaskId===id)renderDetail();
+  renderList();
+}
+function uncompleteTask(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  const hist=t.history||[];
+  t.nextDue=hist.length>0?hist[0].nextDue:t.nextDue;
+  t.history=hist.slice(1);t.completed=false;t.completedAt=null;
+  save();showToast('Marcada como pendente');
+  if(currentTaskId===id)renderDetail();
+  renderList();
+}
+function confirmDelete(id){showConfirm('Excluir Tarefa','Essa ação não pode ser desfeita.','Excluir',()=>deleteTask(id));}
+function deleteTask(id){tasks=tasks.filter(t=>t.id!==id);save();showToast('Tarefa removida');showPage('list');renderList();}
+function openCreate(){
+  formMode='create';currentTaskId=null;
+  document.getElementById('form-title').textContent='Nova Tarefa';
+  document.getElementById('f-title').value='';
+  document.getElementById('f-notes').value='';
+  document.getElementById('f-date').value=today();
+  selectRepeat('monthly');selectReminder('daily');validateForm();showPage('form');
+}
+function openEditCurrent(){
+  const t=tasks.find(x=>x.id===currentTaskId);if(!t)return;
+  formMode='edit';
+  document.getElementById('form-title').textContent='Editar';
+  document.getElementById('f-title').value=t.title;
+  document.getElementById('f-notes').value=t.notes||'';
+  document.getElementById('f-date').value=t.nextDue;
+  selectRepeat(t.repeat?.type||'monthly');
+  if(t.repeat?.type==='custom'){document.getElementById('f-custom-val').value=t.repeat.value||1;document.getElementById('f-custom-unit').value=t.repeat.unit||'meses';}
+  selectReminder(t.reminder||'daily');validateForm();showPage('form');
+}
+function cancelForm(){showPage(formMode==='edit'?'detail':'list');}
+function validateForm(){const ok=document.getElementById('f-title').value.trim().length>0;document.getElementById('form-save-btn').classList.toggle('disabled',!ok);}
+function selectRepeat(type){
+  formRepeat=type;
+  ['weekly','monthly','yearly','custom'].forEach(k=>{document.getElementById('chk-'+k).textContent=k===type?'✓':'';});
+  document.getElementById('custom-row').style.display=type==='custom'?'flex':'none';
+}
+function selectReminder(type){
+  formReminder=type;
+  document.getElementById('chk-hourly').textContent=type==='hourly'?'✓':'';
+  document.getElementById('chk-daily').textContent=type==='daily'?'✓':'';
+}
+function saveForm(){
+  const title=document.getElementById('f-title').value.trim();if(!title)return;
+  const repeat=formRepeat==='custom'?{type:'custom',value:parseInt(document.getElementById('f-custom-val').value)||1,unit:document.getElementById('f-custom-unit').value}:{type:formRepeat};
+  if(formMode==='create'){
+    tasks.unshift({id:uid(),title,notes:document.getElementById('f-notes').value.trim(),nextDue:document.getElementById('f-date').value||today(),repeat,reminder:formReminder,completed:false,completedAt:null,history:[]});
+    showToast('Tarefa criada ✓');
+  }else{
+    const t=tasks.find(x=>x.id===currentTaskId);
+    if(t){t.title=title;t.notes=document.getElementById('f-notes').value.trim();t.nextDue=document.getElementById('f-date').value||today();t.repeat=repeat;t.reminder=formReminder;}
+    showToast('Tarefa salva ✓');
+  }
+  save();scheduleAll();
+  if(formMode==='create'){showPage('list');renderList();}
+  else{renderDetail();showPage('detail');renderList();}
+}
+load();renderList();checkNotifBanner();
+</script>
+</body>
+</html>
+
